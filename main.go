@@ -59,6 +59,16 @@ func buildQuestion(host string) []byte {
 	return question
 }
 
+func parseAndPrint(res []byte) {
+	buf := bytes.NewReader(res)
+
+	decodeHeader(buf)
+	host := decodeQuestionData(buf)
+	ip := decodeAnswerData(buf)
+	fmt.Printf("HOST NAME: %s IP ADDRESS: %s", host, ip)
+
+}
+
 type DNSHeader struct {
 	ID      uint16
 	Opt1    byte
@@ -69,17 +79,11 @@ type DNSHeader struct {
 	ARCount uint16
 }
 
-func parseAndPrint(res []byte) {
+func decodeHeader(buf *bytes.Reader) {
 	var resHeader DNSHeader
-	buf := bytes.NewReader(res)
 
 	err := binary.Read(buf, binary.BigEndian, &resHeader)
 	check(err)
-
-	host := decodeQuestionData(buf)
-	ip := decodeAnswerData(buf)
-	fmt.Printf("HOST NAME: %s IP ADDRESS: %d.%d.%d.%d", host, ip[0], ip[1], ip[2], ip[3])
-
 }
 
 type AnswerHeader struct {
@@ -90,7 +94,7 @@ type AnswerHeader struct {
 	Rdlen  uint16
 }
 
-func decodeAnswerData(buf *bytes.Reader) []byte {
+func decodeAnswerData(buf *bytes.Reader) string {
 	var ansHead AnswerHeader
 	err := binary.Read(buf, binary.BigEndian, &ansHead)
 	check(err)
@@ -99,7 +103,7 @@ func decodeAnswerData(buf *bytes.Reader) []byte {
 	err = binary.Read(buf, binary.BigEndian, &ip)
 	check(err)
 
-	return ip
+	return fmt.Sprintf("%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3])
 }
 
 func decodeQuestionData(buf *bytes.Reader) string {
@@ -107,8 +111,9 @@ func decodeQuestionData(buf *bytes.Reader) string {
 		err    error
 		qType  uint16
 		qClass uint16
-		host   []string
+		sb     strings.Builder
 	)
+
 	for {
 		var size byte
 		err = binary.Read(buf, binary.BigEndian, &size)
@@ -116,10 +121,13 @@ func decodeQuestionData(buf *bytes.Reader) string {
 		if size == 0 {
 			break
 		}
+
 		e := make([]byte, size)
 		err = binary.Read(buf, binary.BigEndian, &e)
 		check(err)
-		host = append(host, string(e))
+
+		sb.WriteString(string(e))
+		sb.WriteRune('.')
 	}
 
 	err = binary.Read(buf, binary.BigEndian, &qType)
@@ -128,7 +136,7 @@ func decodeQuestionData(buf *bytes.Reader) string {
 	err = binary.Read(buf, binary.BigEndian, &qClass)
 	check(err)
 
-	return strings.Join(host, ".")
+	return sb.String()
 }
 
 func check(err error) {
