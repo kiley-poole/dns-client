@@ -14,7 +14,7 @@ func main() {
 		Addr: [4]byte{8, 8, 8, 8},
 		Port: 53,
 	}
-	DNSMessage := buildDNSMessage("google.com")
+	DNSMessage := buildDNSMessage("amazon.com")
 
 	socket, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, 0)
 	check(err)
@@ -60,11 +60,15 @@ func buildQuestion(host string) []byte {
 }
 
 func parseAndPrint(res []byte) {
+	var ip string
 	buf := bytes.NewReader(res)
 
-	decodeHeader(buf)
+	answers := decodeHeader(buf)
 	host := decodeQuestionData(buf)
-	ip := decodeAnswerData(buf)
+	for i := 0; i < int(answers); i++ {
+		ip = decodeAnswerData(buf)
+	}
+
 	fmt.Printf("HOST NAME: %s IP ADDRESS: %s", host, ip)
 
 }
@@ -79,11 +83,12 @@ type DNSHeader struct {
 	ARCount uint16
 }
 
-func decodeHeader(buf *bytes.Reader) {
+func decodeHeader(buf *bytes.Reader) uint16 {
 	var resHeader DNSHeader
 
 	err := binary.Read(buf, binary.BigEndian, &resHeader)
 	check(err)
+	return resHeader.ANCount
 }
 
 type AnswerHeader struct {
