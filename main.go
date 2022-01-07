@@ -9,20 +9,21 @@ import (
 )
 
 func main() {
-	socketAddr := &syscall.SockaddrInet4{}
-	googleDns := &syscall.SockaddrInet4{
+	socketAddr := syscall.SockaddrInet4{}
+	googleDns := syscall.SockaddrInet4{
 		Addr: [4]byte{8, 8, 8, 8},
 		Port: 53,
 	}
-	DNSMessage := buildDNSMessage("amazon.com")
+
+	DNSMessage := buildDNSMessage("bradfieldcs.com")
 
 	socket, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, 0)
 	check(err)
 
-	err = syscall.Bind(socket, socketAddr)
+	err = syscall.Bind(socket, &socketAddr)
 	check(err)
 
-	err = syscall.Sendto(socket, DNSMessage, 0, googleDns)
+	err = syscall.Sendto(socket, DNSMessage, 0, &googleDns)
 	check(err)
 
 	res := make([]byte, 512)
